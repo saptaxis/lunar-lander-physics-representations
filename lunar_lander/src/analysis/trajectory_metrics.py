@@ -161,10 +161,14 @@ def compute_metrics(npz_path: str | Path) -> dict:
     )
 
     # Thrust-to-weight ratio: engine impulse / gravity impulse per step.
-    # mass = density * body_area; TWR = main_power / (mass * |gravity| / fps)
-    # fps cancels out in the ratio since both impulses are per-step.
+    # Box2D applies forces as impulses: engine_impulse = main_power * (1/fps),
+    # gravity_impulse = mass * |gravity| * (1/fps). TWR = engine / gravity.
+    # The (1/fps) cancels, giving TWR = main_power / (mass * |gravity|).
+    # But Box2D scales main_power by the step duration internally, so the
+    # effective thrust per step is main_power * fps.
     mass = density * BODY_AREA
-    twr = main_power / (mass * abs(gravity)) if (mass * abs(gravity)) > 0 else 0.0
+    fps = 50  # Box2D step rate
+    twr = main_power * fps / (mass * abs(gravity)) if (mass * abs(gravity)) > 0 else 0.0
 
     # --- Spatial metrics ---
     # Max altitude: highest y-position observed during the episode.
